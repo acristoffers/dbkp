@@ -1,3 +1,0 @@
-[console_scripts]
-dbkp = dbkp.dbkp:main
-
