@@ -73,10 +73,6 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3.9',
-        'Operating System :: MacOS',
-        'Operating System :: POSIX'
-        'Intended Audience :: System Administrators',
-        'Natural Language :: English',
         'Topic :: System :: Archiving :: Backup'
     ],
     keywords='dbkp dotfiles back restore manage manager',
