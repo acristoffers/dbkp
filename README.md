@@ -1,7 +1,7 @@
 # dbkp - dotfiles backup
 
-dbkp simply backups and restores dotfiles using rsync. You can use it with any
-version control or backup strategy you want.
+dbkp simply backups and restores dotfiles using `rsync -La`. You can use it with
+any version control or backup strategy you want.
 
 ## Instalation
 
