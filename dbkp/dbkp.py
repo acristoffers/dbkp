@@ -117,7 +117,7 @@ class FileBackup:
                     print(f"\tExcluding {entry}")
                     rm_rf(entry)
         else:
-            raise ValueError("File not found: {self.path}")
+            raise ValueError(f"File not found: {self.path}")
 
     def do_restore(self):
         print(f"Restoring {self.path}")
