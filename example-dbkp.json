@@ -12,6 +12,9 @@
   "~/.tmux.conf",
   "~/.zshrc",
   "~/.config/alacritty",
+  "~/.org",
+  "~/.age",
+  "~/bin",
   {
     "path": "~/.config/fish",
     "only": [
@@ -29,17 +32,17 @@
   },
   {
     "backup": "brew tap",
-    "restore": "xargs -n 1 brew install",
+    "restore": "xargs -n 1 brew tap",
     "alias": "brew.taps"
   },
   {
     "backup": "brew leaves",
-    "restore": "xargs brew install",
+    "restore": "xargs -n 1 brew install",
     "alias": "brew.leaves"
   },
   {
     "backup": "brew list --casks",
-    "restore": "xargs brew install --cask",
+    "restore": "xargs -n 1 brew install --cask",
     "alias": "brew.casks"
   }
 ]
