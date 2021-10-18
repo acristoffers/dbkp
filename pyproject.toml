@@ -9,7 +9,7 @@ repository = "https://github.com/acristoffers/dbkp"
 keywords = ["dotfiles", "backup", "restore", "manager"]
 
 [tool.poetry.scripts]
-moirai = 'dbkp.dbkp:main'
+dbkp = 'dbkp.dbkp:main'
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.10"
