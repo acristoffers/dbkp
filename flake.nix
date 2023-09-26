@@ -20,5 +20,9 @@
           ];
         };
         packages.default = dbkp pkgs.python311Packages;
+        apps = rec {
+          dbkp = { type = "app"; program = "${packages.default}/bin/dbkp"; };
+          default = dbkp;
+        };
       });
 }
