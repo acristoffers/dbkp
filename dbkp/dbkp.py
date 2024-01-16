@@ -102,7 +102,7 @@ class FileBackup:
 
     def do_backup(self):
         print(f"Backing up {self.path}")
-        dst = os.path.join(os.getcwd(), "dotfiles", self.alias)
+        dst = os.path.join(os.getcwd(), "dotfiles", self.alias or "")
         if os.path.isfile(self.path) or os.path.islink(self.path):
             subprocess.Popen(["rsync", "-La", self.path, dst]).wait()
         elif os.path.isdir(self.path):
@@ -110,7 +110,7 @@ class FileBackup:
             dst = os.path.join(dst, "")
             subprocess.Popen(["rsync", "-La", src, dst]).wait()
             if self.only:
-                self.exclude = set(os.listdir(dst)) - set(self.only)
+                self.exclude = list(set(os.listdir(dst)) - set(self.only))
             if self.exclude:
                 for entry in self.exclude:
                     entry = os.path.join(dst, entry)
@@ -121,7 +121,7 @@ class FileBackup:
 
     def do_restore(self):
         print(f"Restoring {self.path}")
-        src = os.path.join(os.getcwd(), "dotfiles", self.alias)
+        src = os.path.join(os.getcwd(), "dotfiles", self.alias or "")
         if not os.path.exists(src):
             print(f"\tFile does not exist: {src}")
             return
