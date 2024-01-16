@@ -1,0 +1,39 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/acristoffers/dbkp/pkg/dbkp"
+	"github.com/spf13/cobra"
+)
+
+var backupCmd = &cobra.Command{
+	Use:   "backup",
+	Short: "Executes the backup in dbkp.toml.",
+	Long:  `Executes the backup in dbkp.toml.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		path, err := filepath.Abs(".")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+			os.Exit(1)
+		}
+
+		encrypt, err := cmd.Flags().GetBool("encrypt")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not parse options: %s\n", err)
+			os.Exit(1)
+		}
+
+		if err := dbkp.Backup(path, encrypt); err != nil {
+			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
+func init() {
+	RootCmd.AddCommand(backupCmd)
+	backupCmd.Flags().BoolP("encrypt", "e", false, "Enables encryption for this backup, if it is not enabled already")
+}
