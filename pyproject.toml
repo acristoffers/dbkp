@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dbkp"
-version = "1.0.4"
+version = "1.0.5"
 description = "Dotfiles backup and restore tool"
 authors = ["Álan Crístoffer <acristoffers@startmail.com>"]
 license = "MIT"
