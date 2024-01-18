@@ -11,7 +11,7 @@ With go: `go install github.com/acristoffers/dbkp@latest`
 
 ## Usage
 
-# Create the backup folder and configuration file
+### Create the backup folder and configuration file
 
 Create a folder where you want to backup to. I put this folder into git for
 version control. Initialise the backup with `dbkp init` or, if you want
@@ -19,7 +19,7 @@ encryption (GCM-AES-256) `dbkp init --encrypt`.
 
 It will create a `dbkp.toml` (with some random data if you passed `--encrypt`).
 
-# Backing up/restoring files
+### Backing up/restoring files
 
 Now, add some files with:
 
@@ -49,7 +49,7 @@ EncryptionSalt = ["", ""]
 
 To restore, run `dbkp restore`.
 
-# Backing up/restoring with commands
+### Backing up/restoring with commands
 
 dbkp also supports backup/restore through commands. It will execute the Backup
 command and save its `stdout` during backup, and will read the saved content and
