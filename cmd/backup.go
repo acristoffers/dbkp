@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -41,11 +42,26 @@ var backupCmd = &cobra.Command{
 
 		password := []byte{}
 		if encrypt || len(config.EncryptionSalt) > 0 && len(config.EncryptionSalt[0]) > 0 {
-			password, err = dbkp.AskForPassword()
+			password1, err := dbkp.AskForPassword()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
 				os.Exit(1)
 			}
+
+			fmt.Println("Type again, for confirmation.")
+
+			password2, err := dbkp.AskForPassword()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+				os.Exit(1)
+			}
+
+			if !bytes.Equal(password1, password2) {
+				fmt.Fprintln(os.Stderr, "Passwords do not match")
+				os.Exit(1)
+			}
+
+			password = password1
 		} else {
 			password = nil
 		}
