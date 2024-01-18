@@ -11,11 +11,15 @@ With go: `go install github.com/acristoffers/dbkp@latest`
 
 ## Usage
 
+# Create the backup folder and configuration file
+
 Create a folder where you want to backup to. I put this folder into git for
 version control. Initialise the backup with `dbkp init` or, if you want
 encryption (GCM-AES-256) `dbkp init --encrypt`.
 
 It will create a `dbkp.toml` (with some random data if you passed `--encrypt`).
+
+# Backing up/restoring files
 
 Now, add some files with:
 
@@ -45,5 +49,21 @@ EncryptionSalt = ["", ""]
 
 To restore, run `dbkp restore`.
 
-For now, backing up/restoring by running commands is not implemented, but is
-planned.
+# Backing up/restoring with commands
+
+dbkp also supports backup/restore through commands. It will execute the Backup
+command and save its `stdout` during backup, and will read the saved content and
+feed it to Restore's `stdin`. The commands will be executed by `sh -c`.
+
+To add a backup command:
+
+```bash
+dbkp add --command gnome-settings --backup "dconf dump /" --restore "dconf load /"
+```
+
+If needed, you can use `sh` to pipe things and `xargs` to turn `stdin` into
+arguments:
+
+```bash
+dbkp add --command flatpak --backup "flatpak list --columns=ref --app | tail -n +1" --restore "xargs flatpak install -y --noninteractive --or-update"
+```

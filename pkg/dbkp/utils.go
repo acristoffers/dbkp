@@ -1,6 +1,7 @@
 package dbkp
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -11,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"syscall"
 
@@ -18,6 +20,11 @@ import (
 	"golang.org/x/term"
 )
 
+// A function to be called informing that another file/folder is about to be
+// backed up/restore.
+type ProgressReport func(int, int, string)
+
+// Checks wether slice contains str
 func Contains(slice []string, str string) bool {
 	for _, item := range slice {
 		if item == str {
@@ -27,6 +34,8 @@ func Contains(slice []string, str string) bool {
 	return false
 }
 
+// This function copies all files/folders from src into dst. It is the
+// equivalent of "cp -r" except that the restrictions in file are respected.
 func copyFileOrFolder(src string, dst string, file File) error {
 	fileinfo, err := os.Lstat(src)
 	if err != nil {
@@ -60,11 +69,11 @@ func copyFileOrFolder(src string, dst string, file File) error {
 					}
 
 					if fileinfo.IsDir() {
-						if err := CopyDir(srcpath, dstpath); err != nil {
+						if err := copyDir(srcpath, dstpath); err != nil {
 							return err
 						}
 					} else if fileinfo.Mode().IsRegular() {
-						if err := CopyFile(srcpath, dstpath); err != nil {
+						if err := copyFile(srcpath, dstpath); err != nil {
 							return err
 						}
 					} else if fileinfo.Mode()&os.ModeSymlink == os.ModeSymlink {
@@ -79,11 +88,11 @@ func copyFileOrFolder(src string, dst string, file File) error {
 						}
 
 						if fileinfo.IsDir() {
-							if err := CopyDir(realpath, dstpath); err != nil {
+							if err := copyDir(realpath, dstpath); err != nil {
 								return err
 							}
 						} else if fileinfo.Mode().IsRegular() {
-							if err := CopyFile(realpath, dstpath); err != nil {
+							if err := copyFile(realpath, dstpath); err != nil {
 								return err
 							}
 						}
@@ -91,12 +100,12 @@ func copyFileOrFolder(src string, dst string, file File) error {
 				}
 			}
 		} else {
-			if err := CopyDir(src, dst); err != nil {
+			if err := copyDir(src, dst); err != nil {
 				return err
 			}
 		}
 	} else if fileinfo.Mode().IsRegular() {
-		if err := CopyFile(src, dst); err != nil {
+		if err := copyFile(src, dst); err != nil {
 			return err
 		}
 	} else if fileinfo.Mode()&os.ModeSymlink == os.ModeSymlink {
@@ -111,11 +120,11 @@ func copyFileOrFolder(src string, dst string, file File) error {
 		}
 
 		if fileinfo.IsDir() {
-			if err := CopyDir(realpath, dst); err != nil {
+			if err := copyDir(realpath, dst); err != nil {
 				return err
 			}
 		} else if fileinfo.Mode().IsRegular() {
-			if err := CopyFile(realpath, dst); err != nil {
+			if err := copyFile(realpath, dst); err != nil {
 				return err
 			}
 		}
@@ -124,7 +133,9 @@ func copyFileOrFolder(src string, dst string, file File) error {
 	return nil
 }
 
-func CopyFile(src string, dst string) error {
+// Copy a file from src to dst. If the OS supports hardlinks, use that instead
+// to speedup things.
+func copyFile(src string, dst string) error {
 	if os.Link(src, dst) == nil {
 		return nil
 	}
@@ -165,7 +176,8 @@ func CopyFile(src string, dst string) error {
 	return nil
 }
 
-func CopyDir(src string, dst string) error {
+// This function copies all files/folders from src into dst.
+func copyDir(src string, dst string) error {
 	fsys := os.DirFS(src)
 	return fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
 		srcpath := filepath.Join(src, p)
@@ -185,7 +197,7 @@ func CopyDir(src string, dst string) error {
 				return err
 			}
 		} else if fileinfo.Mode().IsRegular() {
-			if err := CopyFile(srcpath, dstpath); err != nil {
+			if err := copyFile(srcpath, dstpath); err != nil {
 				return err
 			}
 		} else if fileinfo.Mode()&os.ModeSymlink == os.ModeSymlink {
@@ -200,11 +212,11 @@ func CopyDir(src string, dst string) error {
 			}
 
 			if fileinfo.IsDir() {
-				if err := CopyDir(realpath, dstpath); err != nil {
+				if err := copyDir(realpath, dstpath); err != nil {
 					return err
 				}
 			} else if fileinfo.Mode().IsRegular() {
-				if err := CopyFile(realpath, dstpath); err != nil {
+				if err := copyFile(realpath, dstpath); err != nil {
 					return err
 				}
 			}
@@ -214,6 +226,7 @@ func CopyDir(src string, dst string) error {
 	})
 }
 
+// Reads a file into memory and returns its contents as a []byte.
 func readFile(path string) ([]byte, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -234,12 +247,40 @@ func readFile(path string) ([]byte, error) {
 	return buffer, nil
 }
 
+// Executes a commnad inside a shell found shellPath (expected to be sh or to
+// support the -c argument as sh does).
+func executeCommandInShell(shellPath string, command string, stdin *bytes.Buffer, stdout *bytes.Buffer, stderr *bytes.Buffer) error {
+	cmd := exec.Command(shellPath, "-c", command)
+
+	if stdin != nil {
+		cmd.Stdin = stdin
+	}
+
+	if stdout != nil {
+		cmd.Stdout = stdout
+	}
+
+	if stderr != nil {
+		cmd.Stderr = stderr
+	}
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Asks for a password in the terminal, unix style.
 func AskForPassword() ([]byte, error) {
 	fmt.Print("Password: ")
 	defer fmt.Println("")
 	return term.ReadPassword(int(syscall.Stdin))
 }
 
+// Uses PBKDF2 to derive a key from a password. Salt is an hexadecimal string.
+// If salt is given and of correct size, use it; otherwise, generate a new one.
+// Returns both the key and the salt, in order.
 func DeriveKeyFromPassword(password []byte, salt string) ([]byte, string) {
 	saltbytes, err := hex.DecodeString(salt)
 	if err != nil || len(saltbytes) != 32 {
@@ -250,6 +291,8 @@ func DeriveKeyFromPassword(password []byte, salt string) ([]byte, string) {
 	return pbkdf2.Key(password, saltbytes, 1000, 32, sha256.New), salt
 }
 
+// Encrypts data using key and returns the ciphertext and IV. The IV is public
+// information and can be stored unencrypted.
 func Encrypt(key []byte, data []byte) ([]byte, string, error) {
 	saltbytes := make([]byte, 12)
 	rand.Read(saltbytes)
@@ -269,6 +312,8 @@ func Encrypt(key []byte, data []byte) ([]byte, string, error) {
 	return ciphertext, salt, nil
 }
 
+// Decrypts the ciphertext using the given key and salt (IV). Returns the raw
+// data.
 func Decrypt(key []byte, salt string, ciphertext []byte) ([]byte, error) {
 	saltbytes, err := hex.DecodeString(salt)
 	if err != nil {

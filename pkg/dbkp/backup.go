@@ -1,30 +1,29 @@
 package dbkp
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-func Backup(path string, encrypt bool) error {
-	configPath, err := filepath.Abs(filepath.Join(path, "dbkp.toml"))
-	if err != nil {
-		return err
+// Executes the backup of the recipe into path/dbkp. If a password is given,
+// make it an encrypted backup.
+func Backup(path string, recipe Recipe, password []byte, pr ProgressReport) error {
+	if password != nil {
+		recipe.EncryptionSalt = [2]string{"a", ""}
+		return backupEncrypted(path, recipe, password, pr)
 	}
 
-	config, err := LoadRecipe(configPath)
-	if err != nil {
-		return err
-	}
+	return backupPlain(path, recipe, pr)
+}
 
-	if len(config.EncryptionSalt) != 0 && len(config.EncryptionSalt[0]) != 0 {
-		return BackupEncrypted(path, config)
-	} else if encrypt {
-		config.EncryptionSalt = [2]string{"a", ""}
-		return BackupEncrypted(path, config)
-	}
-
+// Executes a plain file backup (without encryption). pr is called before
+// attempting to execute the backup of file/folder/command, if it is non-nil.
+func backupPlain(path string, recipe Recipe, pr ProgressReport) error {
 	backupFolder, err := filepath.Abs(filepath.Join(path, "dbkp-tmp"))
 	if err != nil {
 		return err
@@ -43,16 +42,53 @@ func Backup(path string, encrypt bool) error {
 		return err
 	}
 
-	for _, file := range config.Files {
+	stepsLen := len(recipe.Files) + len(recipe.Commands)
+
+	for i, file := range recipe.Files {
 		path := file.Path
 		if strings.HasPrefix(path, "~") {
 			path = strings.Replace(file.Path, "~", homePath, 1)
 		}
 
-		fmt.Printf("Backing up %s\n", path)
+		if pr != nil {
+			pr(i+1, stepsLen, file.Name)
+		}
 
 		backupPath := filepath.Join(backupFolder, file.Name)
 		if err := copyFileOrFolder(path, backupPath, file); err != nil {
+			return err
+		}
+	}
+
+	shellPath, err := exec.LookPath("sh")
+	if err != nil {
+		return err
+	}
+
+	for i, command := range recipe.Commands {
+		if pr != nil {
+			pr(i+1, stepsLen, command.Name)
+		}
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		backupPath := filepath.Join(backupFolder, command.Name)
+
+		if err := executeCommandInShell(shellPath, command.Backup, nil, &stdout, &stderr); err != nil {
+			return errors.Join(err, errors.New(fmt.Sprintf("Command failed with error\n: %s", stderr.String())))
+		}
+
+		f, err := os.Create(backupPath)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if e := f.Close(); e != nil {
+				err = e
+			}
+		}()
+
+		if _, err := f.Write(stdout.Bytes()); err != nil {
 			return err
 		}
 	}
@@ -68,7 +104,9 @@ func Backup(path string, encrypt bool) error {
 	return nil
 }
 
-func BackupEncrypted(path string, config Recipe) error {
+// Executes an encrypted backup of recipe. A password is expected to be given
+// (i.e.: non-nil/non-empty).
+func backupEncrypted(path string, recipe Recipe, password []byte, pr ProgressReport) error {
 	backupFile, err := filepath.Abs(filepath.Join(path, "dbkp"))
 	if err != nil {
 		return err
@@ -83,39 +121,60 @@ func BackupEncrypted(path string, config Recipe) error {
 		return err
 	}
 
-	password, err := AskForPassword()
-	if err != nil {
-		return err
-	}
-
 	tarball := Tarball{}
-	tarball.MakeWrite()
+	tarball.makeWrite()
 
-	for _, file := range config.Files {
+	stepsLen := len(recipe.Files) + len(recipe.Commands)
+
+	for i, file := range recipe.Files {
 		path := file.Path
 		if strings.HasPrefix(path, "~") {
 			path = strings.Replace(path, "~", homePath, 1)
 		}
 
-		fmt.Printf("Backing up %s\n", path)
+		if pr != nil {
+			pr(i+1, stepsLen, file.Name)
+		}
 
 		subtarball := Tarball{}
-		subtarball.MakeWrite()
+		subtarball.makeWrite()
 
-		if err := subtarball.AddFileOrFolder(file.Name, path, file); err != nil {
+		if err := subtarball.addFileOrFolder(file.Name, path, file); err != nil {
 			return err
 		}
 
-		if err := subtarball.CloseWrite(); err != nil {
+		if err := subtarball.closeWrite(); err != nil {
 			return err
 		}
 
-		if err := tarball.AddFile(file.Name, subtarball.Buffer.Bytes()); err != nil {
+		if err := tarball.addFile(file.Name, subtarball.Buffer.Bytes()); err != nil {
 			return err
 		}
 	}
 
-	if err := tarball.WriteToFile(backupFile, password, config); err != nil {
+	shellPath, err := exec.LookPath("sh")
+	if err != nil {
+		return err
+	}
+
+	for i, command := range recipe.Commands {
+		if pr != nil {
+			pr(i+1, stepsLen, command.Name)
+		}
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		if err := executeCommandInShell(shellPath, command.Backup, nil, &stdout, &stderr); err != nil {
+			return errors.Join(err, errors.New(fmt.Sprintf("Command failed with error\n: %s", stderr.String())))
+		}
+
+		if err := tarball.addFile(command.Name, stdout.Bytes()); err != nil {
+			return err
+		}
+	}
+
+	if err := tarball.writeToFile(backupFile, password, recipe); err != nil {
 		return err
 	}
 

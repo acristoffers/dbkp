@@ -23,9 +23,9 @@
         packages.default = packages.dbkp;
         packages.dbkp = pkgs.buildGoModule {
           pname = "dbkp";
-          version = "2.0.0";
+          version = "2.1.0";
           src = gitignoreSource ./.;
-          vendorHash = "sha256-XStQdswKY/SieK6dxu4xxHA3AP43XOIiJLJjwgaBUeg=";
+          vendorHash = "sha256-s9eLoWYWrTk/i+m549fn8iFUIGQuQLyGbsdq/nHr9DA=";
           installPhase = ''
             runHook preInstall
             mkdir -p $out/bin
@@ -33,6 +33,7 @@
             $GOPATH/bin/docgen
             cp -r build/share $out/share
             cp $GOPATH/bin/dbkp $out/bin/dbkp
+            strip $out/bin/dbkp
             runHook postInstall
           '';
         };

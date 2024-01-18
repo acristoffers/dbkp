@@ -10,16 +10,24 @@ import (
 	"strings"
 )
 
+// Represents a tarball file and holds its data. Should only be used to read or
+// write, but not both at the same time. Since all operations is done
+// in-memmory, this structure is not ideal for large files, but since
+// configuration files are mostly only a few KB, at most a few MB, it is not a
+// problem.
 type Tarball struct {
 	Buffer  bytes.Buffer
 	Writter *tar.Writer
 }
 
-func (tarball *Tarball) MakeWrite() {
+// This function makes the Tarball writeable. No read is allowed after this.
+func (tarball *Tarball) makeWrite() {
 	tarball.Writter = tar.NewWriter(&tarball.Buffer)
 }
 
-func (tarball *Tarball) CloseWrite() error {
+// Closes the writter, finishing the tarball structure. The only safe thing to
+// do after calling this function is to save the file to disk.
+func (tarball *Tarball) closeWrite() error {
 	if tarball.Writter == nil {
 		return nil
 	}
@@ -31,7 +39,9 @@ func (tarball *Tarball) CloseWrite() error {
 	return nil
 }
 
-func (tarball Tarball) AddFileOrFolder(name string, path string, file File) error {
+// Add the file/folder present in path to a file/folder named name in the
+// tarball, respecting the restrictions in file.
+func (tarball Tarball) addFileOrFolder(name string, path string, file File) error {
 	fileinfo, err := os.Lstat(path)
 	if err != nil {
 		return err
@@ -60,7 +70,7 @@ func (tarball Tarball) AddFileOrFolder(name string, path string, file File) erro
 					}
 
 					if fileinfo.IsDir() {
-						if err := tarball.AddFolder(dstpath, path); err != nil {
+						if err := tarball.addFolder(dstpath, path); err != nil {
 							return err
 						}
 					} else if fileinfo.Mode().IsRegular() {
@@ -69,7 +79,7 @@ func (tarball Tarball) AddFileOrFolder(name string, path string, file File) erro
 							return nil
 						}
 
-						if err := tarball.AddFile(dstpath, contents); err != nil {
+						if err := tarball.addFile(dstpath, contents); err != nil {
 							return err
 						}
 					} else if fileinfo.Mode()&os.ModeSymlink == os.ModeSymlink {
@@ -84,7 +94,7 @@ func (tarball Tarball) AddFileOrFolder(name string, path string, file File) erro
 						}
 
 						if fileinfo.IsDir() {
-							if err := tarball.AddFolder(dstpath, realpath); err != nil {
+							if err := tarball.addFolder(dstpath, realpath); err != nil {
 								return err
 							}
 						} else if fileinfo.Mode().IsRegular() {
@@ -93,7 +103,7 @@ func (tarball Tarball) AddFileOrFolder(name string, path string, file File) erro
 								return nil
 							}
 
-							if err := tarball.AddFile(name, contents); err != nil {
+							if err := tarball.addFile(name, contents); err != nil {
 								return err
 							}
 						}
@@ -101,7 +111,7 @@ func (tarball Tarball) AddFileOrFolder(name string, path string, file File) erro
 				}
 			}
 		} else {
-			if err := tarball.AddFolder(name, path); err != nil {
+			if err := tarball.addFolder(name, path); err != nil {
 				return err
 			}
 		}
@@ -111,7 +121,7 @@ func (tarball Tarball) AddFileOrFolder(name string, path string, file File) erro
 			return nil
 		}
 
-		if err := tarball.AddFile(name, contents); err != nil {
+		if err := tarball.addFile(name, contents); err != nil {
 			return err
 		}
 	} else if fileinfo.Mode()&os.ModeSymlink == os.ModeSymlink {
@@ -126,7 +136,7 @@ func (tarball Tarball) AddFileOrFolder(name string, path string, file File) erro
 		}
 
 		if fileinfo.IsDir() {
-			if err := tarball.AddFolder(name, realpath); err != nil {
+			if err := tarball.addFolder(name, realpath); err != nil {
 				return err
 			}
 		} else if fileinfo.Mode().IsRegular() {
@@ -135,7 +145,7 @@ func (tarball Tarball) AddFileOrFolder(name string, path string, file File) erro
 				return nil
 			}
 
-			if err := tarball.AddFile(name, contents); err != nil {
+			if err := tarball.addFile(name, contents); err != nil {
 				return err
 			}
 		}
@@ -144,7 +154,8 @@ func (tarball Tarball) AddFileOrFolder(name string, path string, file File) erro
 	return nil
 }
 
-func (tarball Tarball) AddFile(name string, contents []byte) error {
+// Adds contents as a file to the tarball as name.
+func (tarball Tarball) addFile(name string, contents []byte) error {
 	tw := tarball.Writter
 
 	hdr := &tar.Header{
@@ -164,7 +175,8 @@ func (tarball Tarball) AddFile(name string, contents []byte) error {
 	return nil
 }
 
-func (tarball Tarball) AddFolder(name string, path string) error {
+// Adds a folder at path to the tarball with name.
+func (tarball Tarball) addFolder(name string, path string) error {
 	fsys := os.DirFS(path)
 	return fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
 		srcpath := filepath.Join(path, p)
@@ -185,7 +197,7 @@ func (tarball Tarball) AddFolder(name string, path string) error {
 				return err
 			}
 
-			if err := tarball.AddFile(dstpath, contents); err != nil {
+			if err := tarball.addFile(dstpath, contents); err != nil {
 				return err
 			}
 		} else if fileinfo.Mode()&os.ModeSymlink == os.ModeSymlink {
@@ -200,7 +212,7 @@ func (tarball Tarball) AddFolder(name string, path string) error {
 			}
 
 			if fileinfo.IsDir() {
-				if err := tarball.AddFolder(dstpath, realpath); err != nil {
+				if err := tarball.addFolder(dstpath, realpath); err != nil {
 					return err
 				}
 			} else if fileinfo.Mode().IsRegular() {
@@ -209,7 +221,7 @@ func (tarball Tarball) AddFolder(name string, path string) error {
 					return err
 				}
 
-				if err := tarball.AddFile(dstpath, contents); err != nil {
+				if err := tarball.addFile(dstpath, contents); err != nil {
 					return err
 				}
 			}
@@ -219,7 +231,8 @@ func (tarball Tarball) AddFolder(name string, path string) error {
 	})
 }
 
-func (tarball Tarball) ReadFile(name string) (bytes.Buffer, error) {
+// Reads a file from the tarball, returning its contents in a bytes.Buffer.
+func (tarball Tarball) readFile(name string) (bytes.Buffer, error) {
 	tr := tar.NewReader(&tarball.Buffer)
 	var buffer bytes.Buffer
 
@@ -243,7 +256,10 @@ func (tarball Tarball) ReadFile(name string) (bytes.Buffer, error) {
 	return buffer, nil
 }
 
-func (tarball Tarball) UnpackInto(name string, path string) error {
+// Saves all the contents of a tarball into path. name is removed from the
+// beginning of the path (name is usually File.Name, which is was used to add
+// the file/folder to the tarball in the first place).
+func (tarball Tarball) unpackInto(name string, path string) error {
 	tr := tar.NewReader(&tarball.Buffer)
 
 	for {
@@ -274,7 +290,8 @@ func (tarball Tarball) UnpackInto(name string, path string) error {
 	return nil
 }
 
-func LoadTarball(path string, password []byte, config Recipe) (Tarball, error) {
+// Decrypts and reads the tarball into memory.
+func loadTarball(path string, password []byte, config Recipe) (Tarball, error) {
 	tarball := Tarball{}
 
 	ciphertext, err := os.ReadFile(path)
@@ -293,7 +310,8 @@ func LoadTarball(path string, password []byte, config Recipe) (Tarball, error) {
 	return tarball, nil
 }
 
-func (tarball Tarball) WriteToFile(path string, password []byte, config Recipe) error {
+// Writes the tarball contents to file, encrypted.
+func (tarball Tarball) writeToFile(path string, password []byte, config Recipe) error {
 	if err := tarball.Writter.Close(); err != nil {
 		return err
 	}
