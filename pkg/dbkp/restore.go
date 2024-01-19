@@ -63,7 +63,7 @@ func restorePlain(backupFolder string, recipe Recipe, pr ProgressReport) error {
 
 	for i, command := range recipe.Commands {
 		if pr != nil {
-			pr(i+1, stepsLen, command.Name)
+			pr(i+len(recipe.Files)+1, stepsLen, command.Name)
 		}
 
 		backupPath := filepath.Join(backupFolder, command.Name)
@@ -126,7 +126,7 @@ func restoreEncrypt(backupFile string, recipe Recipe, password []byte, pr Progre
 
 	for i, command := range recipe.Commands {
 		if pr != nil {
-			pr(i+1, stepsLen, command.Name)
+			pr(i+len(recipe.Files)+1, stepsLen, command.Name)
 		}
 
 		var stderr bytes.Buffer

@@ -67,7 +67,7 @@ func backupPlain(path string, recipe Recipe, pr ProgressReport) error {
 
 	for i, command := range recipe.Commands {
 		if pr != nil {
-			pr(i+1, stepsLen, command.Name)
+			pr(i+len(recipe.Files)+1, stepsLen, command.Name)
 		}
 
 		var stdout bytes.Buffer
@@ -159,7 +159,7 @@ func backupEncrypted(path string, recipe Recipe, password []byte, pr ProgressRep
 
 	for i, command := range recipe.Commands {
 		if pr != nil {
-			pr(i+1, stepsLen, command.Name)
+			pr(i+len(recipe.Files)+1, stepsLen, command.Name)
 		}
 
 		var stdout bytes.Buffer
