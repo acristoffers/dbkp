@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/acristoffers/dbkp/pkg/dbkp"
 	"github.com/spf13/cobra"
 )
 
@@ -24,6 +26,17 @@ var RootCmd = &cobra.Command{
       dbkp add ~/bin
       dbkp backup
     `,
+	Run: func(cmd *cobra.Command, args []string) {
+		version, err := cmd.Flags().GetBool("version")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not parse options: %s\n", err)
+			os.Exit(1)
+		}
+
+		if version {
+			fmt.Printf("Version %s", dbkp.Version)
+		}
+	},
 }
 
 func Execute() {
@@ -33,4 +46,5 @@ func Execute() {
 }
 
 func init() {
+	RootCmd.Flags().BoolP("version", "v", false, "Prints version")
 }

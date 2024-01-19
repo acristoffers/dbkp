@@ -1,5 +1,7 @@
 package dbkp
 
+import _ "embed"
+
 import (
 	"bytes"
 	"crypto/aes"
@@ -23,6 +25,9 @@ import (
 // A function to be called informing that another file/folder is about to be
 // backed up/restore.
 type ProgressReport func(int, int, string)
+
+//go:embed version
+var Version string
 
 // Checks wether slice contains str
 func Contains(slice []string, str string) bool {
