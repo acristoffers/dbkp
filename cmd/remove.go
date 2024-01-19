@@ -23,17 +23,17 @@ var removeCmd = &cobra.Command{
 			return suggestions, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		config, err := dbkp.LoadRecipe(path)
+		recipe, err := dbkp.LoadRecipe(path)
 		if err != nil {
 			return suggestions, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		for _, file := range config.Files {
+		for _, file := range recipe.Files {
 			if strings.HasPrefix(file.Name, toComplete) && !dbkp.Contains(args, file.Name) {
 				suggestions = append(suggestions, file.Name)
 			}
 		}
-		for _, command := range config.Commands {
+		for _, command := range recipe.Commands {
 			if strings.HasPrefix(command.Name, toComplete) && !dbkp.Contains(args, command.Name) {
 				suggestions = append(suggestions, command.Name)
 			}
@@ -48,7 +48,7 @@ var removeCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		config, err := dbkp.LoadRecipe(path)
+		recipe, err := dbkp.LoadRecipe(path)
 		if err != nil {
 			fmt.Printf("Cannot open file %s: %s\n", "./dbkp.toml", err)
 			os.Exit(1)
@@ -56,7 +56,7 @@ var removeCmd = &cobra.Command{
 
 		keepFiles := []dbkp.File{}
 	fileLoop:
-		for _, file := range config.Files {
+		for _, file := range recipe.Files {
 			for _, name := range args {
 				if file.Name == name {
 					continue fileLoop
@@ -64,11 +64,11 @@ var removeCmd = &cobra.Command{
 			}
 			keepFiles = append(keepFiles, file)
 		}
-		config.Files = keepFiles
+		recipe.Files = keepFiles
 
 		keepCmd := []dbkp.Command{}
 	commandLoop:
-		for _, command := range config.Commands {
+		for _, command := range recipe.Commands {
 			for _, name := range args {
 				if command.Name == name {
 					continue commandLoop
@@ -76,9 +76,9 @@ var removeCmd = &cobra.Command{
 			}
 			keepCmd = append(keepCmd, command)
 		}
-		config.Commands = keepCmd
+		recipe.Commands = keepCmd
 
-		if err := config.WriteRecipe(path); err != nil {
+		if err := recipe.WriteRecipe(path); err != nil {
 			fmt.Fprintf(os.Stderr, "Cannot open file %s: %s\n", path, err)
 			os.Exit(1)
 		}

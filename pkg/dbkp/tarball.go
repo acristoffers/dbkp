@@ -291,7 +291,7 @@ func (tarball Tarball) unpackInto(name string, path string) error {
 }
 
 // Decrypts and reads the tarball into memory.
-func loadTarball(path string, password []byte, config Recipe) (Tarball, error) {
+func loadTarball(path string, password []byte, recipe Recipe) (Tarball, error) {
 	tarball := Tarball{}
 
 	ciphertext, err := os.ReadFile(path)
@@ -299,8 +299,8 @@ func loadTarball(path string, password []byte, config Recipe) (Tarball, error) {
 		return tarball, err
 	}
 
-	key, _ := DeriveKeyFromPassword(password, config.EncryptionSalt[0])
-	data, err := Decrypt(key, config.EncryptionSalt[1], ciphertext)
+	key, _ := DeriveKeyFromPassword(password, recipe.EncryptionSalt[0])
+	data, err := Decrypt(key, recipe.EncryptionSalt[1], ciphertext)
 	if err != nil {
 		return tarball, err
 	}
@@ -311,7 +311,7 @@ func loadTarball(path string, password []byte, config Recipe) (Tarball, error) {
 }
 
 // Writes the tarball contents to file, encrypted.
-func (tarball Tarball) writeToFile(path string, password []byte, config Recipe) error {
+func (tarball Tarball) writeToFile(path string, password []byte, recipe Recipe) error {
 	if err := tarball.Writter.Close(); err != nil {
 		return err
 	}
@@ -323,8 +323,8 @@ func (tarball Tarball) writeToFile(path string, password []byte, config Recipe) 
 	}
 
 	tomlPath := filepath.Join(filepath.Dir(path), "dbkp.toml")
-	config.EncryptionSalt = [2]string{keysalt, iv}
-	if err := config.WriteRecipe(tomlPath); err != nil {
+	recipe.EncryptionSalt = [2]string{keysalt, iv}
+	if err := recipe.WriteRecipe(tomlPath); err != nil {
 		return err
 	}
 

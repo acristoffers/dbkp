@@ -10,28 +10,28 @@ import (
 	"strings"
 )
 
-func Restore(path string, config Recipe, password []byte, pr ProgressReport) error {
+func Restore(path string, recipe Recipe, password []byte, pr ProgressReport) error {
 	backupPath, err := filepath.Abs(filepath.Join(path, "dbkp"))
 	if err != nil {
 		return err
 	}
 
 	if password != nil {
-		return restoreEncrypt(backupPath, config, password, pr)
+		return restoreEncrypt(backupPath, recipe, password, pr)
 	}
 
-	return restorePlain(backupPath, config, pr)
+	return restorePlain(backupPath, recipe, pr)
 }
 
-func restorePlain(backupFolder string, config Recipe, pr ProgressReport) error {
+func restorePlain(backupFolder string, recipe Recipe, pr ProgressReport) error {
 	homePath, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
 
-	stepsLen := len(config.Files) + len(config.Commands)
+	stepsLen := len(recipe.Files) + len(recipe.Commands)
 
-	for i, file := range config.Files {
+	for i, file := range recipe.Files {
 		path := file.Path
 		if strings.HasPrefix(path, "~") {
 			path = strings.Replace(file.Path, "~", homePath, 1)
@@ -61,7 +61,7 @@ func restorePlain(backupFolder string, config Recipe, pr ProgressReport) error {
 		return err
 	}
 
-	for i, command := range config.Commands {
+	for i, command := range recipe.Commands {
 		if pr != nil {
 			pr(i+1, stepsLen, command.Name)
 		}
@@ -83,8 +83,8 @@ func restorePlain(backupFolder string, config Recipe, pr ProgressReport) error {
 	return nil
 }
 
-func restoreEncrypt(backupFile string, config Recipe, password []byte, pr ProgressReport) error {
-	tar, err := loadTarball(backupFile, password, config)
+func restoreEncrypt(backupFile string, recipe Recipe, password []byte, pr ProgressReport) error {
+	tar, err := loadTarball(backupFile, password, recipe)
 	if err != nil {
 		return err
 	}
@@ -94,9 +94,9 @@ func restoreEncrypt(backupFile string, config Recipe, password []byte, pr Progre
 		return err
 	}
 
-	stepsLen := len(config.Files) + len(config.Commands)
+	stepsLen := len(recipe.Files) + len(recipe.Commands)
 
-	for i, file := range config.Files {
+	for i, file := range recipe.Files {
 		path := file.Path
 		if strings.HasPrefix(path, "~") {
 			path = strings.Replace(file.Path, "~", homePath, 1)
@@ -124,7 +124,7 @@ func restoreEncrypt(backupFile string, config Recipe, password []byte, pr Progre
 		return err
 	}
 
-	for i, command := range config.Commands {
+	for i, command := range recipe.Commands {
 		if pr != nil {
 			pr(i+1, stepsLen, command.Name)
 		}

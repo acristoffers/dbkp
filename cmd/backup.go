@@ -28,20 +28,20 @@ var backupCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		configPath, err := filepath.Abs(filepath.Join(path, "dbkp.toml"))
+		recipePath, err := filepath.Abs(filepath.Join(path, "dbkp.toml"))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
 			os.Exit(1)
 		}
 
-		config, err := dbkp.LoadRecipe(configPath)
+		recipe, err := dbkp.LoadRecipe(recipePath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
 			os.Exit(1)
 		}
 
 		password := []byte{}
-		if encrypt || len(config.EncryptionSalt) > 0 && len(config.EncryptionSalt[0]) > 0 {
+		if encrypt || len(recipe.EncryptionSalt) > 0 && len(recipe.EncryptionSalt[0]) > 0 {
 			password1, err := dbkp.AskForPassword()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
@@ -78,7 +78,7 @@ var backupCmd = &cobra.Command{
 			bar.Set(count)
 		}
 
-		if err := dbkp.Backup(path, config, password, report); err != nil {
+		if err := dbkp.Backup(path, recipe, password, report); err != nil {
 			bar.Clear()
 			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
 			os.Exit(1)

@@ -46,18 +46,18 @@ type Recipe struct {
 // Loads a recipe from a path. Just a convenience function to parse the TOML
 // file.
 func LoadRecipe(path string) (Recipe, error) {
-	var config Recipe
+	var recipe Recipe
 
 	if _, err := os.Stat(path); err != nil {
-		return config, err
+		return recipe, err
 	}
 
-	_, err := toml.DecodeFile(path, &config)
+	_, err := toml.DecodeFile(path, &recipe)
 	if err != nil {
-		return config, err
+		return recipe, err
 	}
 
-	return config, nil
+	return recipe, nil
 }
 
 // Write an recipe prefilled with some examples to path.
@@ -98,20 +98,20 @@ func WriteExampleRecipe(path string) error {
 			Restore: "xargs flatpak install",
 		},
 	}
-	config := Recipe{
+	recipe := Recipe{
 		Files:    files,
 		Commands: commands,
 	}
-	return config.WriteRecipe(path)
+	return recipe.WriteRecipe(path)
 }
 
 // Saves the recipe to a TOML file at path.
-func (config Recipe) WriteRecipe(path string) error {
+func (recipe Recipe) WriteRecipe(path string) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 
 	encoder := toml.NewEncoder(file)
-	return encoder.Encode(config)
+	return encoder.Encode(recipe)
 }

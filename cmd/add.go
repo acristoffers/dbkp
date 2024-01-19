@@ -95,15 +95,15 @@ var addCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		configPath, err := filepath.Abs("./dbkp.toml")
+		recipePath, err := filepath.Abs("./dbkp.toml")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not get recipe path: %s\n", err)
 			os.Exit(1)
 		}
 
-		config, err := dbkp.LoadRecipe(configPath)
+		recipe, err := dbkp.LoadRecipe(recipePath)
 		if err != nil {
-			fmt.Printf("Cannot open file %s: %s\n", configPath, err)
+			fmt.Printf("Cannot open file %s: %s\n", recipePath, err)
 			os.Exit(1)
 		}
 
@@ -114,10 +114,10 @@ var addCmd = &cobra.Command{
 		}
 
 		names := []string{}
-		for _, file := range config.Files {
+		for _, file := range recipe.Files {
 			names = append(names, file.Name)
 		}
-		for _, command := range config.Commands {
+		for _, command := range recipe.Commands {
 			names = append(names, command.Name)
 		}
 
@@ -176,20 +176,20 @@ var addCmd = &cobra.Command{
 				file.Symlinks = grouped
 			}
 
-			config.Files = append(config.Files, file)
+			recipe.Files = append(recipe.Files, file)
 			names = append(names, fileName)
 		}
 
 		if len(command) > 0 {
-			config.Commands = append(config.Commands, dbkp.Command{
+			recipe.Commands = append(recipe.Commands, dbkp.Command{
 				Name:    command,
 				Backup:  backup,
 				Restore: restore,
 			})
 		}
 
-		if err := config.WriteRecipe(configPath); err != nil {
-			fmt.Fprintf(os.Stderr, "Cannot open file %s: %s.\n", configPath, err)
+		if err := recipe.WriteRecipe(recipePath); err != nil {
+			fmt.Fprintf(os.Stderr, "Cannot open file %s: %s.\n", recipePath, err)
 			os.Exit(1)
 		}
 	},
