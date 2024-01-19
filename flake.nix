@@ -23,7 +23,7 @@
         packages.default = packages.dbkp;
         packages.dbkp = pkgs.buildGoModule {
           pname = "dbkp";
-          version = "2.1.0";
+          version = "2.1.1";
           src = gitignoreSource ./.;
           vendorHash = "sha256-s9eLoWYWrTk/i+m549fn8iFUIGQuQLyGbsdq/nHr9DA=";
           installPhase = ''
