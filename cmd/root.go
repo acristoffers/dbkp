@@ -35,6 +35,8 @@ var RootCmd = &cobra.Command{
 
 		if version {
 			fmt.Printf("Version %s", dbkp.Version)
+		} else {
+			cmd.Help()
 		}
 	},
 }
