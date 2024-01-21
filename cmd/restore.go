@@ -41,8 +41,6 @@ var restoreCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("Recipe path: %s", recipePath)
-
 		recipe, err := dbkp.LoadRecipe(recipePath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
