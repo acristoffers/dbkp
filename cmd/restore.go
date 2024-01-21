@@ -15,11 +15,12 @@ var restoreCmd = &cobra.Command{
 	Short: "Restores the backup in dbkp.toml.",
 	Long:  `Restores the backup in dbkp.toml.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		path := ""
-		recipePath := ""
+		var path string
+		var recipePath string
+		var err error
 
 		if len(args) == 1 {
-			recipePath, err := filepath.Abs(args[0])
+			recipePath, err = filepath.Abs(args[0])
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
 				os.Exit(1)
@@ -27,7 +28,7 @@ var restoreCmd = &cobra.Command{
 
 			path = filepath.Dir(recipePath)
 		} else {
-			path, err := filepath.Abs(".")
+			path, err = filepath.Abs(".")
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
 				os.Exit(1)
@@ -39,6 +40,8 @@ var restoreCmd = &cobra.Command{
 				os.Exit(1)
 			}
 		}
+
+		fmt.Printf("Recipe path: %s", recipePath)
 
 		recipe, err := dbkp.LoadRecipe(recipePath)
 		if err != nil {
