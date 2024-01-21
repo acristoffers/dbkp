@@ -46,8 +46,8 @@ func backupPlain(path string, recipe Recipe, pr ProgressReport) error {
 
 	for i, file := range recipe.Files {
 		path := file.Path
-		if strings.HasPrefix(path, "~") {
-			path = strings.Replace(file.Path, "~", homePath, 1)
+		if strings.HasPrefix(path, "~/") {
+			path = filepath.Join(homePath, path[2:])
 		}
 
 		if pr != nil {
@@ -128,8 +128,8 @@ func backupEncrypted(path string, recipe Recipe, password []byte, pr ProgressRep
 
 	for i, file := range recipe.Files {
 		path := file.Path
-		if strings.HasPrefix(path, "~") {
-			path = strings.Replace(path, "~", homePath, 1)
+		if strings.HasPrefix(path, "~/") {
+			path = filepath.Join(homePath, path[2:])
 		}
 
 		if pr != nil {
