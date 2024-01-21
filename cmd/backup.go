@@ -12,26 +12,39 @@ import (
 )
 
 var backupCmd = &cobra.Command{
-	Use:   "backup",
+	Use:   "backup [/path/to/dbkp.json]",
 	Short: "Executes the backup in dbkp.toml.",
 	Long:  `Executes the backup in dbkp.toml.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		path, err := filepath.Abs(".")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
-			os.Exit(1)
-		}
-
 		encrypt, err := cmd.Flags().GetBool("encrypt")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not parse options: %s\n", err)
 			os.Exit(1)
 		}
 
-		recipePath, err := filepath.Abs(filepath.Join(path, "dbkp.toml"))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
-			os.Exit(1)
+		path := ""
+		recipePath := ""
+
+		if len(args) == 1 {
+			recipePath, err = filepath.Abs(args[0])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+				os.Exit(1)
+			}
+
+			path = filepath.Dir(recipePath)
+		} else {
+			path, err = filepath.Abs(".")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+				os.Exit(1)
+			}
+
+			recipePath, err = filepath.Abs(filepath.Join(path, "dbkp.toml"))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+				os.Exit(1)
+			}
 		}
 
 		recipe, err := dbkp.LoadRecipe(recipePath)

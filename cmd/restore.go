@@ -11,20 +11,33 @@ import (
 )
 
 var restoreCmd = &cobra.Command{
-	Use:   "restore",
+	Use:   "restore [/path/to/dbkp.json]",
 	Short: "Restores the backup in dbkp.toml.",
 	Long:  `Restores the backup in dbkp.toml.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		path, err := filepath.Abs(".")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
-			os.Exit(1)
-		}
+		path := ""
+		recipePath := ""
 
-		recipePath, err := filepath.Abs(filepath.Join(path, "dbkp.toml"))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
-			os.Exit(1)
+		if len(args) == 1 {
+			recipePath, err := filepath.Abs(args[0])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+				os.Exit(1)
+			}
+
+			path = filepath.Dir(recipePath)
+		} else {
+			path, err := filepath.Abs(".")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+				os.Exit(1)
+			}
+
+			recipePath, err = filepath.Abs(filepath.Join(path, "dbkp.toml"))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+				os.Exit(1)
+			}
 		}
 
 		recipe, err := dbkp.LoadRecipe(recipePath)
