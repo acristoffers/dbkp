@@ -64,16 +64,21 @@ var restoreCmd = &cobra.Command{
 			progressbar.OptionShowCount(),
 			progressbar.OptionFullWidth(),
 			progressbar.OptionSetRenderBlankState(true))
-		report := func(count int, total int, name string) {
-			bar.ChangeMax(total)
-			bar.Describe(fmt.Sprintf("Restoring %s", name))
-			bar.Set(count)
-		}
 
-		if err := dbkp.Restore(path, recipe, password, report); err != nil {
-			bar.Clear()
-			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
-			os.Exit(1)
+		channel := make(chan dbkp.ProgressReport)
+
+		go func() {
+			if err := dbkp.Restore(path, recipe, password, channel); err != nil {
+				bar.Clear()
+				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+				os.Exit(1)
+			}
+		}()
+
+		for c := range channel {
+			bar.ChangeMax64(int64(c.Total))
+			bar.Describe(fmt.Sprintf("Backing up %s", c.Name))
+			bar.Set64(int64(c.Count))
 		}
 
 		bar.Clear()

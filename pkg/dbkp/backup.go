@@ -12,7 +12,7 @@ import (
 
 // Executes the backup of the recipe into path/dbkp. If a password is given,
 // make it an encrypted backup.
-func Backup(path string, recipe Recipe, password []byte, pr ProgressReport) error {
+func Backup(path string, recipe Recipe, password []byte, pr chan<- ProgressReport) error {
 	if password != nil {
 		recipe.EncryptionSalt = [2]string{"a", ""}
 		return backupEncrypted(path, recipe, password, pr)
@@ -23,7 +23,9 @@ func Backup(path string, recipe Recipe, password []byte, pr ProgressReport) erro
 
 // Executes a plain file backup (without encryption). pr is called before
 // attempting to execute the backup of file/folder/command, if it is non-nil.
-func backupPlain(path string, recipe Recipe, pr ProgressReport) error {
+func backupPlain(path string, recipe Recipe, pr chan<- ProgressReport) error {
+  defer close(pr)
+
 	backupFolder, err := filepath.Abs(filepath.Join(path, "dbkp-tmp"))
 	if err != nil {
 		return err
@@ -42,7 +44,7 @@ func backupPlain(path string, recipe Recipe, pr ProgressReport) error {
 		return err
 	}
 
-	stepsLen := len(recipe.Files) + len(recipe.Commands)
+	stepsLen := uint64(len(recipe.Files) + len(recipe.Commands))
 
 	for i, file := range recipe.Files {
 		path := file.Path
@@ -51,7 +53,7 @@ func backupPlain(path string, recipe Recipe, pr ProgressReport) error {
 		}
 
 		if pr != nil {
-			pr(i, stepsLen, file.Name)
+			pr <- ProgressReport{uint64(i), stepsLen, file.Name}
 		}
 
 		backupPath := filepath.Join(backupFolder, file.Name)
@@ -67,7 +69,7 @@ func backupPlain(path string, recipe Recipe, pr ProgressReport) error {
 
 	for i, command := range recipe.Commands {
 		if pr != nil {
-			pr(i+len(recipe.Files), stepsLen, command.Name)
+			pr <- ProgressReport{uint64(i + len(recipe.Files)), stepsLen, command.Name}
 		}
 
 		var stdout bytes.Buffer
@@ -106,7 +108,9 @@ func backupPlain(path string, recipe Recipe, pr ProgressReport) error {
 
 // Executes an encrypted backup of recipe. A password is expected to be given
 // (i.e.: non-nil/non-empty).
-func backupEncrypted(path string, recipe Recipe, password []byte, pr ProgressReport) error {
+func backupEncrypted(path string, recipe Recipe, password []byte, pr chan<- ProgressReport) error {
+	defer close(pr)
+
 	backupFile, err := filepath.Abs(filepath.Join(path, "dbkp"))
 	if err != nil {
 		return err
@@ -124,7 +128,7 @@ func backupEncrypted(path string, recipe Recipe, password []byte, pr ProgressRep
 	tarball := Tarball{}
 	tarball.makeWrite()
 
-	stepsLen := len(recipe.Files) + len(recipe.Commands)
+	stepsLen := uint64(len(recipe.Files) + len(recipe.Commands))
 
 	for i, file := range recipe.Files {
 		path := file.Path
@@ -133,7 +137,7 @@ func backupEncrypted(path string, recipe Recipe, password []byte, pr ProgressRep
 		}
 
 		if pr != nil {
-			pr(i+1, stepsLen, file.Name)
+			pr <- ProgressReport{uint64(i + 1), stepsLen, file.Name}
 		}
 
 		subtarball := Tarball{}
@@ -159,7 +163,7 @@ func backupEncrypted(path string, recipe Recipe, password []byte, pr ProgressRep
 
 	for i, command := range recipe.Commands {
 		if pr != nil {
-			pr(i+len(recipe.Files)+1, stepsLen, command.Name)
+			pr <- ProgressReport{uint64(i + len(recipe.Files) + 1), stepsLen, command.Name}
 		}
 
 		var stdout bytes.Buffer

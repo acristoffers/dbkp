@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func Restore(path string, recipe Recipe, password []byte, pr ProgressReport) error {
+func Restore(path string, recipe Recipe, password []byte, pr chan<- ProgressReport) error {
 	backupPath, err := filepath.Abs(filepath.Join(path, "dbkp"))
 	if err != nil {
 		return err
@@ -23,13 +23,15 @@ func Restore(path string, recipe Recipe, password []byte, pr ProgressReport) err
 	return restorePlain(backupPath, recipe, pr)
 }
 
-func restorePlain(backupFolder string, recipe Recipe, pr ProgressReport) error {
+func restorePlain(backupFolder string, recipe Recipe, pr chan<- ProgressReport) error {
+	defer close(pr)
+
 	homePath, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
 
-	stepsLen := len(recipe.Files) + len(recipe.Commands)
+	stepsLen := uint64(len(recipe.Files) + len(recipe.Commands))
 
 	for i, file := range recipe.Files {
 		path := file.Path
@@ -38,7 +40,7 @@ func restorePlain(backupFolder string, recipe Recipe, pr ProgressReport) error {
 		}
 
 		if pr != nil {
-			pr(i, stepsLen, file.Name)
+			pr <- ProgressReport{uint64(i), stepsLen, file.Name}
 		}
 		backupPath := filepath.Join(backupFolder, file.Name)
 
@@ -63,7 +65,7 @@ func restorePlain(backupFolder string, recipe Recipe, pr ProgressReport) error {
 
 	for i, command := range recipe.Commands {
 		if pr != nil {
-			pr(i+len(recipe.Files), stepsLen, command.Name)
+			pr <- ProgressReport{uint64(i + len(recipe.Files)), stepsLen, command.Name}
 		}
 
 		backupPath := filepath.Join(backupFolder, command.Name)
@@ -83,7 +85,9 @@ func restorePlain(backupFolder string, recipe Recipe, pr ProgressReport) error {
 	return nil
 }
 
-func restoreEncrypt(backupFile string, recipe Recipe, password []byte, pr ProgressReport) error {
+func restoreEncrypt(backupFile string, recipe Recipe, password []byte, pr chan<- ProgressReport) error {
+	defer close(pr)
+
 	tar, err := loadTarball(backupFile, password, recipe)
 	if err != nil {
 		return err
@@ -94,7 +98,7 @@ func restoreEncrypt(backupFile string, recipe Recipe, password []byte, pr Progre
 		return err
 	}
 
-	stepsLen := len(recipe.Files) + len(recipe.Commands)
+	stepsLen := uint64(len(recipe.Files) + len(recipe.Commands))
 
 	for i, file := range recipe.Files {
 		path := file.Path
@@ -103,7 +107,7 @@ func restoreEncrypt(backupFile string, recipe Recipe, password []byte, pr Progre
 		}
 
 		if pr != nil {
-			pr(i+1, stepsLen, file.Name)
+			pr <- ProgressReport{uint64(i + 1), stepsLen, file.Name}
 		}
 
 		subtarbuffer, err := tar.readFile(file.Name)
@@ -126,7 +130,7 @@ func restoreEncrypt(backupFile string, recipe Recipe, password []byte, pr Progre
 
 	for i, command := range recipe.Commands {
 		if pr != nil {
-			pr(i+len(recipe.Files)+1, stepsLen, command.Name)
+			pr <- ProgressReport{uint64(i + len(recipe.Files) + 1), stepsLen, command.Name}
 		}
 
 		var stderr bytes.Buffer

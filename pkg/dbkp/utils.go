@@ -1,13 +1,12 @@
 package dbkp
 
-import _ "embed"
-
 import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -24,7 +23,11 @@ import (
 
 // A function to be called informing that another file/folder is about to be
 // backed up/restore.
-type ProgressReport func(int, int, string)
+type ProgressReport struct {
+	Count uint64
+	Total uint64
+  Name string
+}
 
 //go:embed version
 var Version string
