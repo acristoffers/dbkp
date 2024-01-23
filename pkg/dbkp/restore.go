@@ -38,7 +38,7 @@ func restorePlain(backupFolder string, recipe Recipe, pr ProgressReport) error {
 		}
 
 		if pr != nil {
-			pr(i+1, stepsLen, file.Name)
+			pr(i, stepsLen, file.Name)
 		}
 		backupPath := filepath.Join(backupFolder, file.Name)
 
@@ -63,7 +63,7 @@ func restorePlain(backupFolder string, recipe Recipe, pr ProgressReport) error {
 
 	for i, command := range recipe.Commands {
 		if pr != nil {
-			pr(i+len(recipe.Files)+1, stepsLen, command.Name)
+			pr(i+len(recipe.Files), stepsLen, command.Name)
 		}
 
 		backupPath := filepath.Join(backupFolder, command.Name)
