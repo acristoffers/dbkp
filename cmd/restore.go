@@ -77,7 +77,7 @@ var restoreCmd = &cobra.Command{
 
 		for c := range channel {
 			bar.ChangeMax64(int64(c.Total))
-			bar.Describe(fmt.Sprintf("Backing up %s", c.Name))
+			bar.Describe(fmt.Sprintf("Restoring %s", c.Name))
 			bar.Set64(int64(c.Count))
 		}
 
