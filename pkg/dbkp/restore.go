@@ -49,10 +49,6 @@ func restorePlain(backupFolder string, recipe Recipe, pr chan<- ProgressReport) 
 			return err
 		}
 
-		if err := os.RemoveAll(path); err != nil {
-			return err
-		}
-
 		if err := copyFileOrFolder(backupPath, path, file); err != nil {
 			return err
 		}
@@ -113,10 +109,6 @@ func restoreEncrypt(backupFile string, recipe Recipe, password []byte, pr chan<-
 		subtarbuffer, err := tar.readFile(file.Name)
 		subtar := Tarball{Buffer: subtarbuffer}
 		if err != nil {
-			return err
-		}
-
-		if err := os.RemoveAll(path); err != nil {
 			return err
 		}
 
