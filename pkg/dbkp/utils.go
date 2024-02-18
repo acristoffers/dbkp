@@ -296,7 +296,7 @@ func DeriveKeyFromPassword(password []byte, salt string) ([]byte, string) {
 		rand.Read(saltbytes)
 	}
 	salt = hex.EncodeToString(saltbytes)
-	return pbkdf2.Key(password, saltbytes, 1000, 32, sha256.New), salt
+	return pbkdf2.Key(password, saltbytes, 100000, 32, sha256.New), salt
 }
 
 // Encrypts data using key and returns the ciphertext and IV. The IV is public
