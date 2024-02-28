@@ -144,10 +144,6 @@ func copyFileOrFolder(src string, dst string, file File) error {
 // Copy a file from src to dst. If the OS supports hardlinks, use that instead
 // to speedup things.
 func copyFile(src string, dst string) error {
-	if os.Link(src, dst) == nil {
-		return nil
-	}
-
 	in, err := os.Open(src)
 	if err != nil {
 		return err
