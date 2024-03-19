@@ -25,7 +25,7 @@
           pname = "dbkp";
           version = (builtins.readFile ./pkg/dbkp/version);
           src = gitignoreSource ./.;
-          vendorHash = "sha256-s9eLoWYWrTk/i+m549fn8iFUIGQuQLyGbsdq/nHr9DA=";
+          vendorHash = "sha256-UfTp2eCCpqLElGZU73cnOUuN0uDhtA3ysmfAHbHyzAQ=";
           installPhase = ''
             runHook preInstall
             mkdir -p $out/bin
