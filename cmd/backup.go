@@ -12,7 +12,7 @@ import (
 )
 
 var backupCmd = &cobra.Command{
-	Use:   "backup [/path/to/dbkp.json]",
+	Use:   "backup [/path/to/dbkp.toml]",
 	Short: "Executes the backup in dbkp.toml.",
 	Long:  `Executes the backup in dbkp.toml.`,
 	Run: func(cmd *cobra.Command, args []string) {
