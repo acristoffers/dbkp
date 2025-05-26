@@ -25,7 +25,11 @@
           pname = "dbkp";
           version = (builtins.readFile ./pkg/dbkp/version);
           src = gitignoreSource ./.;
-          vendorHash = "sha256-VuFq6x25/TgjbWGLT5AaoAZi+rCxR/Irj+H6FQOMGKQ=";
+          vendorHash = "sha256-B9OCSE+q0lV6K8yELJ+tR4Uqg2zIJ/rldOcQsfDuQ94=";
+          buildInputs = with pkgs; [ glibc.static ];
+          CFLAGS = "-I${pkgs.glibc.dev}/include";
+          LDFLAGS = "-L${pkgs.glibc}/lib";
+          ldflags = [ "-s" "-w" "-linkmode external" "-extldflags '-static'" ];
           installPhase = ''
             runHook preInstall
             mkdir -p $out/bin
@@ -33,7 +37,6 @@
             $GOPATH/bin/docgen
             cp -r build/share $out/share
             cp $GOPATH/bin/dbkp $out/bin/dbkp
-            strip $out/bin/dbkp
             runHook postInstall
           '';
         };
