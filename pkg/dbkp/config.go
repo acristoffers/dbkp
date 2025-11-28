@@ -18,7 +18,7 @@ type File struct {
 	Name     string      // Uniquely represents this File and is also the name of the file/folder inside the backup folder.
 	Path     string      // The path to the file/folder to be backed up in the filesystem.
 	Only     []string    // If Path is a folder, only backs up the items in Only, skipping all others.
-	Exclude  []string    // If Path is a folder, excludes the items in Exclude from the backup.
+	Exclude  []string    // Regex patterns matched against the relative path (using `/`) that should be excluded.
 	Symlinks [][2]string // After restoring, creates symlinks from /path/to/backup/Name/Symlinks[][0] into Symlinks[][1].
 }
 

@@ -39,6 +39,13 @@ which is going to skip `~/bin/tree-sitter-grammars`. There is also an
 `--only|-o` option that only picks the given files/folders. To pass more than
 one, separate their names by commas.
 
+Exclude entries accept [Go regular expressions](https://pkg.go.dev/regexp)
+matched against the entire relative path (using `/` as the separator), so you
+can skip nested paths such as every `cache` folder with
+```bash
+dbkp add ~/code -e '(?i)cache/'
+```
+
 To backup, run `dbkp backup`. If you want to encrypt a previously unencrypted
 backup, pass the `-e` flag. If you want to stop encrypting files, edit
 `dbkp.toml` and make sure that the line of `EncryptionSalt` reads:

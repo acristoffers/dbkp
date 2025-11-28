@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"syscall"
 
 	"golang.org/x/crypto/pbkdf2"
@@ -41,91 +40,30 @@ func copyFileOrFolder(src string, dst string, file File) error {
 		return err
 	}
 
+	filter, err := newPathFilter(file)
+	if err != nil {
+		return err
+	}
+
 	if fileinfo.IsDir() {
-		if len(file.Only) != 0 || len(file.Exclude) != 0 {
-			if err := os.MkdirAll(dst, os.ModeDir|os.ModePerm); err != nil {
-				return err
-			}
-
-			entries, err := fs.ReadDir(os.DirFS(src), ".")
-			if err != nil {
-				return err
-			}
-
-			only := len(file.Only) != 0
-			exclude := len(file.Exclude) != 0
-
-			for _, entry := range entries {
-				test_only := only && slices.Contains(file.Only, entry.Name())
-				test_exclude := exclude && !slices.Contains(file.Exclude, entry.Name())
-				if test_only || test_exclude {
-					srcpath := filepath.Join(src, entry.Name())
-					dstpath := filepath.Join(dst, entry.Name())
-
-					fileinfo, err := os.Stat(srcpath)
-					if err != nil {
-						return err
-					}
-
-					if fileinfo.IsDir() {
-						if err := copyDir(srcpath, dstpath); err != nil {
-							return err
-						}
-					} else if fileinfo.Mode().IsRegular() {
-						if err := copyFile(srcpath, dstpath); err != nil {
-							return err
-						}
-					} else if fileinfo.Mode()&os.ModeSymlink == os.ModeSymlink {
-						realpath, err := filepath.EvalSymlinks(srcpath)
-						if err != nil {
-							return nil
-						}
-
-						fileinfo, err := os.Stat(realpath)
-						if err != nil {
-							return nil
-						}
-
-						if fileinfo.IsDir() {
-							if err := copyDir(realpath, dstpath); err != nil {
-								return err
-							}
-						} else if fileinfo.Mode().IsRegular() {
-							if err := copyFile(realpath, dstpath); err != nil {
-								return err
-							}
-						}
-					}
-				}
-			}
-		} else {
-			if err := copyDir(src, dst); err != nil {
-				return err
-			}
-		}
+		return copyDirWithFilter(src, dst, "", filter)
 	} else if fileinfo.Mode().IsRegular() {
-		if err := copyFile(src, dst); err != nil {
-			return err
-		}
+		return copyFile(src, dst)
 	} else if fileinfo.Mode()&os.ModeSymlink == os.ModeSymlink {
 		realpath, err := filepath.EvalSymlinks(src)
 		if err != nil {
 			return nil
 		}
 
-		fileinfo, err := os.Stat(realpath)
+		fileinfo, err = os.Stat(realpath)
 		if err != nil {
 			return nil
 		}
 
 		if fileinfo.IsDir() {
-			if err := copyDir(realpath, dst); err != nil {
-				return err
-			}
+			return copyDirWithFilter(realpath, dst, "", filter)
 		} else if fileinfo.Mode().IsRegular() {
-			if err := copyFile(realpath, dst); err != nil {
-				return err
-			}
+			return copyFile(realpath, dst)
 		}
 	}
 
@@ -171,26 +109,48 @@ func copyFile(src string, dst string) error {
 	return nil
 }
 
-// This function copies all files/folders from src into dst.
-func copyDir(src string, dst string) error {
+// copyDirWithFilter copies src into dst respecting the provided filter. prefix tracks
+// the relative path from the original root so excludes can match nested paths.
+func copyDirWithFilter(src string, dst string, prefix string, filter pathFilter) error {
 	fsys := os.DirFS(src)
 	return fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
-		srcpath := filepath.Join(src, p)
-		dstpath := filepath.Join(dst, p)
-
 		if err != nil {
 			return err
 		}
+
+		srcpath := filepath.Join(src, p)
+		dstpath := filepath.Join(dst, p)
 
 		fileinfo, err := os.Lstat(srcpath)
 		if err != nil {
 			return err
 		}
 
+		if p == "." {
+			if fileinfo.IsDir() {
+				return os.MkdirAll(dstpath, os.ModeDir|os.ModePerm)
+			}
+			return nil
+		}
+
+		rel := p
+		if prefix != "" {
+			rel = filepath.Join(prefix, p)
+		}
+
+		skip, skipDir := filter.shouldSkip(rel, fileinfo.IsDir())
+		if skip {
+			if skipDir {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
 		if fileinfo.IsDir() {
 			if err := os.MkdirAll(dstpath, os.ModeDir|os.ModePerm); err != nil {
 				return err
 			}
+			return nil
 		} else if fileinfo.Mode().IsRegular() {
 			if err := copyFile(srcpath, dstpath); err != nil {
 				return err
@@ -207,7 +167,7 @@ func copyDir(src string, dst string) error {
 			}
 
 			if fileinfo.IsDir() {
-				if err := copyDir(realpath, dstpath); err != nil {
+				if err := copyDirWithFilter(realpath, dstpath, rel, filter); err != nil {
 					return err
 				}
 			} else if fileinfo.Mode().IsRegular() {

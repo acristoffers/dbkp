@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 )
 
@@ -48,107 +47,40 @@ func (tarball Tarball) addFileOrFolder(name string, path string, file File) erro
 		return err
 	}
 
+	filter, err := newPathFilter(file)
+	if err != nil {
+		return err
+	}
+
 	if fileinfo.IsDir() {
-		if len(file.Only) != 0 || len(file.Exclude) != 0 {
-			entries, err := fs.ReadDir(os.DirFS(path), ".")
-			if err != nil {
-				return err
-			}
-
-			only := len(file.Only) != 0
-			exclude := len(file.Exclude) != 0
-
-			for _, entry := range entries {
-				test_only := only && slices.Contains(file.Only, entry.Name())
-				test_exclude := exclude && !slices.Contains(file.Exclude, entry.Name())
-				if test_only || test_exclude {
-					srcpath := filepath.Join(path, entry.Name())
-					dstpath := filepath.Join(name, entry.Name())
-
-					fileinfo, err := os.Stat(srcpath)
-					if err != nil {
-						return err
-					}
-
-					if fileinfo.IsDir() {
-						if err := tarball.addFolder(dstpath, path); err != nil {
-							return err
-						}
-					} else if fileinfo.Mode().IsRegular() {
-						contents, err := readFile(srcpath)
-						if err != nil {
-							return nil
-						}
-
-						if err := tarball.addFile(dstpath, contents); err != nil {
-							return err
-						}
-					} else if fileinfo.Mode()&os.ModeSymlink == os.ModeSymlink {
-						realpath, err := filepath.EvalSymlinks(srcpath)
-						if err != nil {
-							return nil
-						}
-
-						fileinfo, err := os.Stat(realpath)
-						if err != nil {
-							return nil
-						}
-
-						if fileinfo.IsDir() {
-							if err := tarball.addFolder(dstpath, realpath); err != nil {
-								return err
-							}
-						} else if fileinfo.Mode().IsRegular() {
-							contents, err := readFile(path)
-							if err != nil {
-								return nil
-							}
-
-							if err := tarball.addFile(name, contents); err != nil {
-								return err
-							}
-						}
-					}
-				}
-			}
-		} else {
-			if err := tarball.addFolder(name, path); err != nil {
-				return err
-			}
-		}
+		return tarball.addFolderWithFilter(name, path, "", filter)
 	} else if fileinfo.Mode().IsRegular() {
 		contents, err := readFile(path)
 		if err != nil {
 			return nil
 		}
 
-		if err := tarball.addFile(name, contents); err != nil {
-			return err
-		}
+		return tarball.addFile(name, contents)
 	} else if fileinfo.Mode()&os.ModeSymlink == os.ModeSymlink {
 		realpath, err := filepath.EvalSymlinks(path)
 		if err != nil {
 			return nil
 		}
 
-		fileinfo, err := os.Stat(realpath)
+		fileinfo, err = os.Stat(realpath)
 		if err != nil {
 			return nil
 		}
 
 		if fileinfo.IsDir() {
-			if err := tarball.addFolder(name, realpath); err != nil {
-				return err
-			}
+			return tarball.addFolderWithFilter(name, realpath, "", filter)
 		} else if fileinfo.Mode().IsRegular() {
 			contents, err := readFile(path)
 			if err != nil {
 				return nil
 			}
 
-			if err := tarball.addFile(name, contents); err != nil {
-				return err
-			}
+			return tarball.addFile(name, contents)
 		}
 	}
 
@@ -176,31 +108,47 @@ func (tarball Tarball) addFile(name string, contents []byte) error {
 	return nil
 }
 
-// Adds a folder at path to the tarball with name.
-func (tarball Tarball) addFolder(name string, path string) error {
+func (tarball Tarball) addFolderWithFilter(name string, path string, prefix string, filter pathFilter) error {
 	fsys := os.DirFS(path)
 	return fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
-		srcpath := filepath.Join(path, p)
-		dstpath := filepath.Join(name, p)
-
 		if err != nil {
 			return err
 		}
+
+		if p == "." {
+			return nil
+		}
+
+		srcpath := filepath.Join(path, p)
+		dstpath := filepath.Join(name, p)
 
 		fileinfo, err := os.Lstat(srcpath)
 		if err != nil {
 			return err
 		}
 
-		if fileinfo.Mode().IsRegular() {
+		rel := p
+		if prefix != "" {
+			rel = filepath.Join(prefix, p)
+		}
+
+		skip, skipDir := filter.shouldSkip(rel, fileinfo.IsDir())
+		if skip {
+			if skipDir {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
+		if fileinfo.IsDir() {
+			return nil
+		} else if fileinfo.Mode().IsRegular() {
 			contents, err := readFile(srcpath)
 			if err != nil {
 				return err
 			}
 
-			if err := tarball.addFile(dstpath, contents); err != nil {
-				return err
-			}
+			return tarball.addFile(dstpath, contents)
 		} else if fileinfo.Mode()&os.ModeSymlink == os.ModeSymlink {
 			realpath, err := filepath.EvalSymlinks(srcpath)
 			if err != nil {
@@ -213,18 +161,14 @@ func (tarball Tarball) addFolder(name string, path string) error {
 			}
 
 			if fileinfo.IsDir() {
-				if err := tarball.addFolder(dstpath, realpath); err != nil {
-					return err
-				}
+				return tarball.addFolderWithFilter(dstpath, realpath, rel, filter)
 			} else if fileinfo.Mode().IsRegular() {
 				contents, err := readFile(realpath)
 				if err != nil {
 					return err
 				}
 
-				if err := tarball.addFile(dstpath, contents); err != nil {
-					return err
-				}
+				return tarball.addFile(dstpath, contents)
 			}
 		}
 

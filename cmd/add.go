@@ -198,7 +198,7 @@ var addCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(addCmd)
 	addCmd.Flags().StringSliceP("only", "o", []string{}, "Adds files/folders to the Only entry. Example: --only file1,file2,file3")
-	addCmd.Flags().StringSliceP("exclude", "e", []string{}, "Adds files/folders to the Exclude entry. Example: --exclude file1,file2,file3")
+	addCmd.Flags().StringSliceP("exclude", "e", []string{}, "Adds Go regexp patterns (matched against relative paths using `/`) to the Exclude entry. Example: --exclude 'cache$',tmp")
 	addCmd.Flags().StringSliceP("symlinks", "s", []string{}, "Adds symlinks. Example: --symlinks .,~/.neovim,init.vim,~/.vimrc")
 	addCmd.Flags().StringP("command", "c", "", "Adds a command instead of a file. The name must be a valid file name: --command brew.leaves")
 	addCmd.Flags().StringP("backup", "b", "", "The backup command. Its output will be saved to Command Name: --backup 'brew leaves'")
