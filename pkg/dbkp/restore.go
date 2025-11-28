@@ -74,7 +74,7 @@ func restorePlain(backupFolder string, recipe Recipe, pr chan<- ProgressReport) 
 		stdin := bytes.NewBuffer(data)
 
 		if err := executeCommandInShell(shellPath, command.Restore, stdin, nil, &stderr); err != nil {
-			return errors.Join(err, errors.New(fmt.Sprintf("Command failed with error\n: %s", stderr.String())))
+			return errors.Join(err, fmt.Errorf("Command failed with error\n: %s", stderr.String()))
 		}
 	}
 
@@ -132,7 +132,7 @@ func restoreEncrypt(backupFile string, recipe Recipe, password []byte, pr chan<-
 		}
 
 		if err := executeCommandInShell(shellPath, command.Restore, &stdin, nil, &stderr); err != nil {
-			return errors.Join(err, errors.New(fmt.Sprintf("Command failed with error\n: %s", stderr.String())))
+			return errors.Join(err, fmt.Errorf("Command failed with error\n: %s", stderr.String()))
 		}
 	}
 

@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -58,8 +59,8 @@ func (tarball Tarball) addFileOrFolder(name string, path string, file File) erro
 			exclude := len(file.Exclude) != 0
 
 			for _, entry := range entries {
-				test_only := only && Contains(file.Only, entry.Name())
-				test_exclude := exclude && !Contains(file.Exclude, entry.Name())
+				test_only := only && slices.Contains(file.Only, entry.Name())
+				test_exclude := exclude && !slices.Contains(file.Exclude, entry.Name())
 				if test_only || test_exclude {
 					srcpath := filepath.Join(path, entry.Name())
 					dstpath := filepath.Join(name, entry.Name())

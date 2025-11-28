@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/acristoffers/dbkp/pkg/dbkp"
@@ -29,12 +30,12 @@ var removeCmd = &cobra.Command{
 		}
 
 		for _, file := range recipe.Files {
-			if strings.HasPrefix(file.Name, toComplete) && !dbkp.Contains(args, file.Name) {
+			if strings.HasPrefix(file.Name, toComplete) && !slices.Contains(args, file.Name) {
 				suggestions = append(suggestions, file.Name)
 			}
 		}
 		for _, command := range recipe.Commands {
-			if strings.HasPrefix(command.Name, toComplete) && !dbkp.Contains(args, command.Name) {
+			if strings.HasPrefix(command.Name, toComplete) && !slices.Contains(args, command.Name) {
 				suggestions = append(suggestions, command.Name)
 			}
 		}

@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"syscall"
 
 	"golang.org/x/crypto/pbkdf2"
@@ -26,21 +27,11 @@ import (
 type ProgressReport struct {
 	Count uint64
 	Total uint64
-  Name string
+	Name  string
 }
 
 //go:embed version
 var Version string
-
-// Checks wether slice contains str
-func Contains(slice []string, str string) bool {
-	for _, item := range slice {
-		if item == str {
-			return true
-		}
-	}
-	return false
-}
 
 // This function copies all files/folders from src into dst. It is the
 // equivalent of "cp -r" except that the restrictions in file are respected.
@@ -65,8 +56,8 @@ func copyFileOrFolder(src string, dst string, file File) error {
 			exclude := len(file.Exclude) != 0
 
 			for _, entry := range entries {
-				test_only := only && Contains(file.Only, entry.Name())
-				test_exclude := exclude && !Contains(file.Exclude, entry.Name())
+				test_only := only && slices.Contains(file.Only, entry.Name())
+				test_exclude := exclude && !slices.Contains(file.Exclude, entry.Name())
 				if test_only || test_exclude {
 					srcpath := filepath.Join(src, entry.Name())
 					dstpath := filepath.Join(dst, entry.Name())
