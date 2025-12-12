@@ -26,6 +26,7 @@
           version = (builtins.readFile ./pkg/dbkp/version);
           src = gitignoreSource ./.;
           vendorHash = "sha256-CDfB9NugX7n2/q5C+SQjz9BhUz7XoA603wjLThww1tI=";
+          env = { CGO_ENABLED = 0; };
           installPhase = ''
             runHook preInstall
             mkdir -p $out/bin
