@@ -1,0 +1,94 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.2.3)"
+        required: true
+        type: string
+      ref:
+        description: "Git ref to build (defaults to tag)"
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            bin: dbkp-linux-amd64
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            bin: dbkp-linux-arm64
+          - runner: macos-latest
+            goos: darwin
+            goarch: amd64
+            bin: dbkp-darwin-amd64
+          - runner: macos-latest
+            goos: darwin
+            goarch: arm64
+            bin: dbkp-darwin-arm64
+          - runner: windows-latest
+            goos: windows
+            goarch: amd64
+            bin: dbkp-windows-amd64.exe
+          - runner: windows-latest
+            goos: windows
+            goarch: arm64
+            bin: dbkp-windows-arm64.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        shell: bash
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -trimpath -ldflags="-s -w" -o dist/${{ matrix.bin }} .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbkp-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/${{ matrix.bin }}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: dist/**
