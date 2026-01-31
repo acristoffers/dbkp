@@ -1,0 +1,61 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            bin: dbkp
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            bin: dbkp
+          - runner: macos-latest
+            goos: darwin
+            goarch: amd64
+            bin: dbkp
+          - runner: macos-latest
+            goos: darwin
+            goarch: arm64
+            bin: dbkp
+          - runner: windows-latest
+            goos: windows
+            goarch: amd64
+            bin: dbkp.exe
+          - runner: windows-latest
+            goos: windows
+            goarch: arm64
+            bin: dbkp.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        shell: bash
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -trimpath -ldflags="-s -w" -o dist/${{ matrix.bin }} .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbkp-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/${{ matrix.bin }}
