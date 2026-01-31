@@ -55,6 +55,7 @@ var listCmd = &cobra.Command{
 		} else {
 			fmt.Println("Encryption disabled")
 		}
+		fmt.Println("")
 
 		if machine {
 			for _, file := range recipe.Files {
