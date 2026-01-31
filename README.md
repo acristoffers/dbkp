@@ -1,76 +1,145 @@
-# dbkp - dotfiles backup
+# dbkp — dotfiles backup and restore
 
-dbkp simply backups and restores dotfiles. You can use it with any version
-control or backup strategy you want.
+`dbkp` is a small CLI that snapshots your dotfiles into a folder you control and restores them
+later, optionally encrypted. It keeps a simple `dbkp.toml` recipe, can back up files and folders,
+and can also capture command output and replay it during restore. You can put the backup folder in
+git, sync it with a drive, or use any storage you prefer.
 
-## Instalation
+## What it is
 
-With nix flakes: `nix install github:acristoffers/dbkp`
+- A declarative recipe (`dbkp.toml`) for dotfiles.
+- A backup/restore runner for files, folders, and command output.
+- A lightweight tool that doesn’t impose how you store or version the backup.
 
-With go: `go install github.com/acristoffers/dbkp@latest`
+## What it is not
+
+- Not a dotfiles manager or symlink farm like GNU Stow.
+- Not a system-level deployment tool like Nix.
+- Not a VCS or storage backend by itself.
+
+If you need package management, system configuration, or large-scale machine provisioning, you
+probably want Nix. If you only need symlink management, you probably want GNU Stow. dbkp focuses on
+backing up and restoring dotfiles and related command state.
+
+I personally pair it with a git repository to add the version control layer. You can see my
+[dotfiles](https://github.com/acristoffers/dotfiles) for an example.
+
+## Install
+
+### Nix (flakes)
+
+```bash
+nix install github:acristoffers/dbkp
+```
+
+### Go (build from source)
+
+```bash
+go install github.com/acristoffers/dbkp@latest
+```
+
+### Prebuilt binaries
+
+Download a binary from the project’s GitHub Releases page and place it on your
+`PATH`.
 
 ## Usage
 
-### Create the backup folder and configuration file
-
-Create a folder where you want to backup to. I put this folder into git for
-version control. Initialise the backup with `dbkp init` or, if you want
-encryption (GCM-AES-256) `dbkp init --encrypt`.
-
-It will create a `dbkp.toml` (with some random data if you passed `--encrypt`).
-
-### Backing up/restoring files
-
-Now, add some files with:
+### Initialize a backup folder
 
 ```bash
+mkdir -p ~/dotfiles-backup
+cd ~/dotfiles-backup
+dbkp init
+```
+
+Enable encryption when creating the recipe:
+
+```bash
+dbkp init --encrypt
+```
+
+### Add files and folders
+
+```bash
+dbkp add ~/.config/fish
 dbkp add ~/bin
 ```
 
-which adds the folder `~/bin` to the backup (but does not backup yet). However,
-I have a folder inside `~/bin` that I don't want to backup, so I run this
-instead:
+Exclude entries (Go regex, matched against relative paths):
 
 ```bash
-dbkp add ~/bin -e tree-sitter-grammars
+dbkp add ~/bin --exclude 'cache$',tmp
 ```
 
-which is going to skip `~/bin/tree-sitter-grammars`. There is also an
-`--only|-o` option that only picks the given files/folders. To pass more than
-one, separate their names by commas.
-
-Exclude entries accept [Go regular expressions](https://pkg.go.dev/regexp)
-matched against the entire relative path (using `/` as the separator), so you
-can skip nested paths such as every `cache` folder with
-```bash
-dbkp add ~/code -e '(?i)cache/'
-```
-
-To backup, run `dbkp backup`. If you want to encrypt a previously unencrypted
-backup, pass the `-e` flag. If you want to stop encrypting files, edit
-`dbkp.toml` and make sure that the line of `EncryptionSalt` reads:
-
-```toml
-EncryptionSalt = ["", ""]
-```
-
-To restore, run `dbkp restore`.
-
-### Backing up/restoring with commands
-
-dbkp also supports backup/restore through commands. It will execute the Backup
-command and save its `stdout` during backup, and will read the saved content and
-feed it to Restore's `stdin`. The commands will be executed by `sh -c`.
-
-To add a backup command:
+Only include specific entries inside the added path:
 
 ```bash
-dbkp add --command gnome-settings --backup "dconf dump /" --restore "dconf load /"
+dbkp add ~/.config --only fish,alacritty
 ```
 
-If needed, you can use `sh` to pipe things and `xargs` to turn `stdin` into
-arguments:
+Add symlink mappings (source inside backup → target path):
+
+```bash
+dbkp add ~/.config/neovim --symlinks .,~/.neovim,init.vim,~/.vimrc
+# The following symlinks will be created by the restore command:
+# ~/.neovim pointing to ~/.config/neovim
+# ~/.vimrc pointing to ~/.config/neovim/init.vim
+```
+
+### Add commands
+
+Save the output of a command during backup and feed it to another command during restore:
+
+```bash
+dbkp add --command brew.leaves --backup "brew leaves" --restore "xargs brew install"
+```
+
+You can pipe and use `xargs` as needed:
 
 ```bash
 dbkp add --command flatpak --backup "flatpak list --columns=ref --app | tail -n +1" --restore "xargs flatpak install -y --noninteractive --or-update"
 ```
+
+The output of the backup command is saved to a file (i.e. `brew.leaves` or `flatpak`) and the file's
+contents are piped into the restore command, so the last example is the same as:
+
+```bash
+# backup
+flatpak list --columns=ref --app | tail -n +1 > flatpak
+# restore
+cat flatpak | xargs flatpak install -y --noninteractive --or-update
+```
+
+### Run backup and restore
+
+```bash
+dbkp backup
+dbkp restore
+```
+
+Force encryption on an existing, unencrypted recipe:
+
+```bash
+dbkp backup --encrypt
+```
+
+### Remove entries
+
+The argument is the `Name` inside `dbkp.toml` you want to remove:
+
+```bash
+dbkp remove fish
+dbkp remove brew.leaves
+```
+
+### List entries
+
+```bash
+dbkp list
+dbkp list --machine
+```
+
+## License
+
+Mozilla Public License 2.0. See `LICENSE`.
