@@ -25,7 +25,7 @@
           pname = "dbkp";
           version = (builtins.readFile ./pkg/dbkp/version);
           src = gitignoreSource ./.;
-          vendorHash = "sha256-B9OCSE+q0lV6K8yELJ+tR4Uqg2zIJ/rldOcQsfDuQ94=";
+          vendorHash = "sha256-XAs9ucifQJLKxu5sb8BovQmkxcNWnkomX2eARCfgGoY=";
           buildInputs = with pkgs; [ glibc.static ];
           CFLAGS = "-I${pkgs.glibc.dev}/include";
           LDFLAGS = "-L${pkgs.glibc}/lib";
