@@ -77,7 +77,7 @@ func backupPlain(path string, recipe Recipe, pr chan<- ProgressReport) error {
 		backupPath := filepath.Join(backupFolder, command.Name)
 
 		if err := executeCommandInShell(shellPath, command.Backup, nil, &stdout, &stderr); err != nil {
-			return errors.Join(err, errors.New(fmt.Sprintf("Command failed with error\n: %s", stderr.String())))
+			return errors.Join(err, fmt.Errorf("Command failed with error\n: %s", stderr.String()))
 		}
 
 		f, err := os.Create(backupPath)
@@ -170,7 +170,7 @@ func backupEncrypted(path string, recipe Recipe, password []byte, pr chan<- Prog
 		var stderr bytes.Buffer
 
 		if err := executeCommandInShell(shellPath, command.Backup, nil, &stdout, &stderr); err != nil {
-			return errors.Join(err, errors.New(fmt.Sprintf("Command failed with error\n: %s", stderr.String())))
+			return errors.Join(err, fmt.Errorf("Command failed with error\n: %s", stderr.String()))
 		}
 
 		if err := tarball.addFile(command.Name, stdout.Bytes()); err != nil {
