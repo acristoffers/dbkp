@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/acristoffers/dbkp/pkg/dbkp"
 	"github.com/schollz/progressbar/v3"
@@ -11,35 +13,44 @@ import (
 )
 
 var restoreCmd = &cobra.Command{
-	Use:   "restore [/path/to/dbkp.toml]",
+	Use:   "restore [dbkp.toml] [name ...]",
 	Short: "Restores the backup in dbkp.toml.",
 	Long:  `Restores the backup in dbkp.toml.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		var path string
-		var recipePath string
-		var err error
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		suggestions := []string{}
 
-		if len(args) == 1 {
-			recipePath, err = filepath.Abs(args[0])
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
-				os.Exit(1)
-			}
+		recipePath, names, err := resolveRecipePathAndNames(args)
+		if err != nil {
+			return suggestions, cobra.ShellCompDirectiveNoFileComp
+		}
 
-			path = filepath.Dir(recipePath)
-		} else {
-			path, err = filepath.Abs(".")
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
-				os.Exit(1)
-			}
+		recipe, err := dbkp.LoadRecipe(recipePath)
+		if err != nil {
+			return suggestions, cobra.ShellCompDirectiveNoFileComp
+		}
 
-			recipePath, err = filepath.Abs(filepath.Join(path, "dbkp.toml"))
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
-				os.Exit(1)
+		for _, file := range recipe.Files {
+			if strings.HasPrefix(file.Name, toComplete) && !slices.Contains(names, file.Name) {
+				suggestions = append(suggestions, file.Name)
 			}
 		}
+
+		for _, command := range recipe.Commands {
+			if strings.HasPrefix(command.Name, toComplete) && !slices.Contains(names, command.Name) {
+				suggestions = append(suggestions, command.Name)
+			}
+		}
+
+		return suggestions, cobra.ShellCompDirectiveNoFileComp
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		recipePath, names, err := resolveRecipePathAndNames(args)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+			os.Exit(1)
+		}
+
+		path := filepath.Dir(recipePath)
 
 		recipe, err := dbkp.LoadRecipe(recipePath)
 		if err != nil {
@@ -68,7 +79,7 @@ var restoreCmd = &cobra.Command{
 		channel := make(chan dbkp.ProgressReport)
 
 		go func() {
-			if err := dbkp.Restore(path, recipe, password, channel); err != nil {
+			if err := dbkp.RestoreSelected(path, recipe, password, channel, names); err != nil {
 				bar.Clear()
 				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
 				os.Exit(1)

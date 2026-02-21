@@ -275,3 +275,51 @@ func (tarball Tarball) writeToFile(path string, password []byte, recipe Recipe) 
 
 	return os.WriteFile(path, ciphertext, 0600)
 }
+
+// Copy existing tarball entries into dst, skipping any entry that belongs to
+// the excluded names.
+func (tarball Tarball) copyEntriesExcluding(dst *Tarball, excluded map[string]struct{}) error {
+	tr := tar.NewReader(&tarball.Buffer)
+	tw := dst.Writter
+
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		if isExcludedEntry(hdr.Name, excluded) {
+			continue
+		}
+
+		var buffer bytes.Buffer
+		if _, err := io.Copy(&buffer, tr); err != nil {
+			return err
+		}
+
+		newHdr := &tar.Header{
+			Name: hdr.Name,
+			Mode: hdr.Mode,
+			Size: int64(buffer.Len()),
+		}
+		if err := tw.WriteHeader(newHdr); err != nil {
+			return err
+		}
+		if _, err := tw.Write(buffer.Bytes()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func isExcludedEntry(name string, excluded map[string]struct{}) bool {
+	for key := range excluded {
+		if name == key || strings.HasPrefix(name, key+"/") {
+			return true
+		}
+	}
+	return false
+}

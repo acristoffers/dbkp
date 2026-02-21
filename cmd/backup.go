@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/acristoffers/dbkp/pkg/dbkp"
 	"github.com/schollz/progressbar/v3"
@@ -12,9 +14,36 @@ import (
 )
 
 var backupCmd = &cobra.Command{
-	Use:   "backup [/path/to/dbkp.toml]",
+	Use:   "backup [dbkp.toml] [name ...]",
 	Short: "Executes the backup in dbkp.toml.",
 	Long:  `Executes the backup in dbkp.toml.`,
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		suggestions := []string{}
+
+		recipePath, names, err := resolveRecipePathAndNames(args)
+		if err != nil {
+			return suggestions, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		recipe, err := dbkp.LoadRecipe(recipePath)
+		if err != nil {
+			return suggestions, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		for _, file := range recipe.Files {
+			if strings.HasPrefix(file.Name, toComplete) && !slices.Contains(names, file.Name) {
+				suggestions = append(suggestions, file.Name)
+			}
+		}
+
+		for _, command := range recipe.Commands {
+			if strings.HasPrefix(command.Name, toComplete) && !slices.Contains(names, command.Name) {
+				suggestions = append(suggestions, command.Name)
+			}
+		}
+
+		return suggestions, cobra.ShellCompDirectiveNoFileComp
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		encrypt, err := cmd.Flags().GetBool("encrypt")
 		if err != nil {
@@ -22,30 +51,13 @@ var backupCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		path := ""
-		recipePath := ""
-
-		if len(args) == 1 {
-			recipePath, err = filepath.Abs(args[0])
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
-				os.Exit(1)
-			}
-
-			path = filepath.Dir(recipePath)
-		} else {
-			path, err = filepath.Abs(".")
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
-				os.Exit(1)
-			}
-
-			recipePath, err = filepath.Abs(filepath.Join(path, "dbkp.toml"))
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
-				os.Exit(1)
-			}
+		recipePath, names, err := resolveRecipePathAndNames(args)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
+			os.Exit(1)
 		}
+
+		path := filepath.Dir(recipePath)
 
 		recipe, err := dbkp.LoadRecipe(recipePath)
 		if err != nil {
@@ -89,7 +101,7 @@ var backupCmd = &cobra.Command{
 		channel := make(chan dbkp.ProgressReport)
 
 		go func() {
-			if err := dbkp.Backup(path, recipe, password, channel); err != nil {
+			if err := dbkp.BackupSelected(path, recipe, password, channel, names); err != nil {
 				bar.Clear()
 				fmt.Fprintf(os.Stderr, "An error ocurred: %s\n", err)
 				os.Exit(1)

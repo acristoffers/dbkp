@@ -11,16 +11,27 @@ import (
 )
 
 func Restore(path string, recipe Recipe, password []byte, pr chan<- ProgressReport) error {
+	return RestoreSelected(path, recipe, password, pr, nil)
+}
+
+// Restores only the selected names from the backup. If names is empty, it
+// behaves like a full restore.
+func RestoreSelected(path string, recipe Recipe, password []byte, pr chan<- ProgressReport, names []string) error {
+	selectedRecipe, err := filterRecipeByNames(recipe, names)
+	if err != nil {
+		return err
+	}
+
 	backupPath, err := filepath.Abs(filepath.Join(path, "dbkp"))
 	if err != nil {
 		return err
 	}
 
 	if password != nil {
-		return restoreEncrypt(backupPath, recipe, password, pr)
+		return restoreEncrypt(backupPath, selectedRecipe, password, pr)
 	}
 
-	return restorePlain(backupPath, recipe, pr)
+	return restorePlain(backupPath, selectedRecipe, pr)
 }
 
 func restorePlain(backupFolder string, recipe Recipe, pr chan<- ProgressReport) error {
