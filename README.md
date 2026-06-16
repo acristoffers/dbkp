@@ -26,6 +26,10 @@ I personally pair it with a git repository to add the version control layer. You
 
 ## Install
 
+### Ubuntu and Fedora
+
+There are packages for Ubuntu and Fedora in my [personal repository](https://github.com/acristoffers/repository).
+
 ### Nix (flakes)
 
 ```bash
