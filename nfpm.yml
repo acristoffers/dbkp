@@ -4,7 +4,7 @@
 name: "dbkp"
 arch: "${ARCH}"
 platform: "linux"
-version: "2.2.2"
+version: "2.2.3"
 section: "default"
 priority: "extra"
 maintainer: "Álan e Sousa <alan@esousa.me>"

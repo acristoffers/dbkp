@@ -25,7 +25,7 @@
           pname = "dbkp";
           version = (builtins.readFile ./pkg/dbkp/version);
           src = gitignoreSource ./.;
-          vendorHash = "sha256-oPeh69zTigZtBk7yzgpcMrgGgKRHhqOJlanE3cQtDKQ=";
+          vendorHash = "sha256-1EYII7qDatLdnPGFPA9RDJju78n4g93tV0vHmh0uwBQ=";
           env = { CGO_ENABLED = 0; };
           installPhase = ''
             runHook preInstall
